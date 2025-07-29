@@ -65,7 +65,7 @@ if uploaded_file is not None:
                         else:
                             st.warning(f"Image not found: {img_path}")
 
-            # ✅ Create a ZIP file of all matched images
+            # Create a ZIP file of all matched images
             if matched_image_paths:
                 zip_buffer = io.BytesIO()
                 with zipfile.ZipFile(zip_buffer, "w") as zip_file:

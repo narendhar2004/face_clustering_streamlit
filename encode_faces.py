@@ -48,4 +48,4 @@ for filename in os.listdir(input_dir):
 with open(json_path, "w") as f:
     json.dump(face_dict, f, indent=2)
 
-print(f"✅ Saved grouped encodings in: {json_path}")
+print(f"Saved grouped encodings in: {json_path}")
