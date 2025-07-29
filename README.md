@@ -16,23 +16,18 @@ A Streamlit app to find and download group images containing similar faces using
 ## 🛠️ How to Run Locally
 
 ```bash
-git clone https://github.com/yourusername/face-clustering-streamlit.git
-cd face-clustering-streamlit
+git clone https://github.com/narendhar2004/face_clustering_streamlit.git
+cd face_clustering_streamlit
 pip install -r requirements.txt
 streamlit run app.py
 ```
 ## 📁 Project Structure
-bash
-Copy
-Edit
+
+```bash
 face-clustering-streamlit/
 ├── group_images/                             
 ├── app.py                        
 ├── face_encodings_grouped.json  
 ├── requirements.txt             
 └── README.md    
-```
-## Install with
-```bash
-pip install -r requirements.txt
 ```
