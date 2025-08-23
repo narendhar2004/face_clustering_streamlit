@@ -8,10 +8,10 @@ import io
 import zipfile
 
 # Configuration
-JSON_PATH = "face_encodings_grouped.json"
-DISTANCE_THRESHOLD = 0.6   # Euclidean threshold (default for face_recognition)
+JSON_PATH = "face_clusters_dbscan.json"
+DISTANCE_THRESHOLD = 0.6   # Euclidean distance threshold
 
-st.title("👥 Face Clustering Viewer (Euclidean Distance)")
+st.title("👥 Face Clustering Viewer (Euclidean Distance - DBSCAN)")
 st.subheader("Upload a reference image to find matching group images")
 
 # Load JSON
@@ -20,7 +20,7 @@ def load_encodings():
     with open(JSON_PATH, "r") as f:
         return json.load(f)
 
-encoding_dict = load_encodings()
+clusters = load_encodings()
 
 # File uploader
 uploaded_file = st.file_uploader("Upload a reference image", type=["jpg", "jpeg", "png"])
@@ -39,35 +39,34 @@ if uploaded_file is not None:
     else:
         ref_enc = ref_encodings[0]
 
-        # Compare with stored encodings
         st.info(f"Finding matches with distance ≤ {DISTANCE_THRESHOLD}")
         matched = []
         matched_image_paths = set()
 
-        for enc_key, paths in encoding_dict.items():
-            stored_enc = np.array([float(x) for x in enc_key.split(",")])
+        # Loop through clusters
+        for cluster in clusters:
+            for stored_enc, img_path in zip(cluster["encodings"], cluster["images"]):
+                stored_enc = np.array(stored_enc)
 
-            # ✅ Euclidean distance instead of cosine similarity
-            distance = np.linalg.norm(stored_enc - ref_enc)
+                # Euclidean distance
+                distance = np.linalg.norm(stored_enc - ref_enc)
 
-            if distance <= DISTANCE_THRESHOLD:
-                matched.append((enc_key, distance, paths))
-                matched_image_paths.update(paths)
+                if distance <= DISTANCE_THRESHOLD:
+                    matched.append((cluster["id"], distance, img_path))
+                    matched_image_paths.add(img_path)
 
         if matched:
-            # Sort by distance ascending (smaller = closer match)
+            # Sort by distance ascending
             matched.sort(key=lambda x: x[1])
 
-            for idx, (enc, dist, imgs) in enumerate(matched):
-                with st.expander(f"Match #{idx+1} - Distance: {dist:.4f}"):
-                    st.code(enc[:100] + "...")  # Truncated encoding
-                    for img_path in imgs:
-                        if os.path.exists(img_path):
-                            st.image(img_path, caption=os.path.basename(img_path), width=250)
-                        else:
-                            st.warning(f"Image not found: {img_path}")
+            for idx, (cluster_id, dist, img_path) in enumerate(matched):
+                with st.expander(f"Cluster {cluster_id} - Match #{idx+1} (Distance: {dist:.4f})"):
+                    if os.path.exists(img_path):
+                        st.image(img_path, caption=os.path.basename(img_path), width=250)
+                    else:
+                        st.warning(f"Image not found: {img_path}")
 
-            # ✅ Create a ZIP file of all matched images
+            # ✅ ZIP download
             if matched_image_paths:
                 zip_buffer = io.BytesIO()
                 with zipfile.ZipFile(zip_buffer, "w") as zip_file:
@@ -76,7 +75,6 @@ if uploaded_file is not None:
                             zip_file.write(img_path, arcname=os.path.basename(img_path))
 
                 zip_buffer.seek(0)
-
                 st.download_button(
                     label="📦 Download All Matched Images as ZIP",
                     data=zip_buffer,
