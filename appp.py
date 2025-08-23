@@ -3,16 +3,15 @@ import face_recognition
 import numpy as np
 import json
 from PIL import Image
-from sklearn.metrics.pairwise import cosine_similarity
 import os
 import io
 import zipfile
 
 # Configuration
 JSON_PATH = "face_encodings_grouped.json"
-SIMILARITY_THRESHOLD = 0.93
+DISTANCE_THRESHOLD = 0.6   # Euclidean threshold (default for face_recognition)
 
-st.title("👥 Face Clustering Viewer")
+st.title("👥 Face Clustering Viewer (Euclidean Distance)")
 st.subheader("Upload a reference image to find matching group images")
 
 # Load JSON
@@ -41,23 +40,26 @@ if uploaded_file is not None:
         ref_enc = ref_encodings[0]
 
         # Compare with stored encodings
-        st.info(f"Finding matches with similarity ≥ {SIMILARITY_THRESHOLD}")
+        st.info(f"Finding matches with distance ≤ {DISTANCE_THRESHOLD}")
         matched = []
         matched_image_paths = set()
 
         for enc_key, paths in encoding_dict.items():
             stored_enc = np.array([float(x) for x in enc_key.split(",")])
-            similarity = cosine_similarity([stored_enc], [ref_enc])[0][0]
 
-            if similarity >= SIMILARITY_THRESHOLD:
-                matched.append((enc_key, similarity, paths))
+            # ✅ Euclidean distance instead of cosine similarity
+            distance = np.linalg.norm(stored_enc - ref_enc)
+
+            if distance <= DISTANCE_THRESHOLD:
+                matched.append((enc_key, distance, paths))
                 matched_image_paths.update(paths)
 
         if matched:
-            matched.sort(key=lambda x: -x[1])  # Sort by similarity descending
+            # Sort by distance ascending (smaller = closer match)
+            matched.sort(key=lambda x: x[1])
 
-            for idx, (enc, sim, imgs) in enumerate(matched):
-                with st.expander(f"Match #{idx+1} - Similarity: {sim:.4f}"):
+            for idx, (enc, dist, imgs) in enumerate(matched):
+                with st.expander(f"Match #{idx+1} - Distance: {dist:.4f}"):
                     st.code(enc[:100] + "...")  # Truncated encoding
                     for img_path in imgs:
                         if os.path.exists(img_path):
@@ -65,7 +67,7 @@ if uploaded_file is not None:
                         else:
                             st.warning(f"Image not found: {img_path}")
 
-            # Create a ZIP file of all matched images
+            # ✅ Create a ZIP file of all matched images
             if matched_image_paths:
                 zip_buffer = io.BytesIO()
                 with zipfile.ZipFile(zip_buffer, "w") as zip_file:
